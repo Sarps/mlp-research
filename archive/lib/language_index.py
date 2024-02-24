@@ -69,3 +69,13 @@ class LanguageIndex():
 
     def __phrases_to_vocab(self) -> list[str]:
         return sorted({word for phrase in self.phrases for word in phrase})
+
+    def __str__(self) -> str:
+        vocab_sample = ', '.join(repr(word) for word in list(self.vocab)[:5]) + ('...' if len(self.vocab) > 5 else '')
+        return (
+            f"LanguageIndex {{ "
+            f"sequences: {len(self.phrases)}, "
+            f"vocab_size: {len(self.vocab)}, "
+            f"max_sequence_timestep: {self.max_length}, "
+            f"vocab: ({vocab_sample}) }}"
+        )

@@ -173,3 +173,4 @@ cython_debug/
 #.idea/
 
 training_checkpoints
+projects/exports

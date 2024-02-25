@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, Union, List, Tuple
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Layer
+from keras.models import Model
+from keras.layers import Input, Layer
+import keras
 from jsonpath_ng import jsonpath, parse
 
 
@@ -35,25 +36,27 @@ class Graph(Model):
             **kwargs
     ):
         """Initializes the GraphModel with separate inputs, layers, and direct connections.
-
         Args:
             inputs (Union[Input, List[Input]]): A single Input layer or a list of Input layers, each with a unique name.
             layers (List[Layer]): A list of Layer instances, each with a unique name.
             connections (List[Tuple[str, str]]): A list of tuples specifying the connections between layers,
                                                  represented as (source_layer_name, destination_layer_name).
         """
+        print(inputs)
         if not isinstance(inputs, list):
             inputs = [inputs]
-
-        # Determine which inputs are used based on connections
         used_input_names = {src for src, _ in connections}
-        used_inputs = [inp for inp in inputs if inp.name in used_input_names]
+        inputs = [inp for inp in inputs if inp.name in used_input_names]
 
         super(Graph, self).__init__(
-            inputs=used_inputs,
-            outputs=self.__build_model(used_inputs, layers, connections),
+            inputs=inputs,
+            outputs=self.__build_model(inputs, layers, connections),
             **kwargs
         )
+
+        self.graph_inputs = inputs
+        self.graph_layers = layers
+        self.connections = connections
 
     def __build_model(
             self,
@@ -87,6 +90,30 @@ class Graph(Model):
                 grouped[dest_name] = ConnectionGroup(dest_name, [], idx)
             grouped[dest_name].append(src_layer, src_port, dest_port, idx)
         return sorted(grouped.values())
+
+    def get_config(self):
+        base_config = super(Graph, self).get_config()
+        config = {
+            **base_config,
+            'graph_inputs': [{'shape': inp.shape[1:], 'name': inp.name, 'dtype': inp.dtype} for inp in
+                             self.graph_inputs],
+            'graph_layers': [keras.layers.serialize(layer) for layer in self.graph_layers],
+            'connections': self.connections,
+        }
+        return config
+
+    @classmethod
+    def from_config(cls, config, custom_objects=None):
+        input_configs = config['graph_inputs']
+        connections = config['connections']
+
+        # Recreate the Input layers from the stored configurations
+        inputs = [Input(shape=conf['shape'], name=conf['name'], dtype=conf['dtype']) for conf in input_configs]
+        layers = [keras.layers.deserialize(layer_config) for layer_config in config['graph_layers']]
+        print(layers)
+
+        # Recreate other layers and connections...
+        return cls(inputs=inputs, layers=layers, connections=connections)
 
 
 class ConnectionManager:

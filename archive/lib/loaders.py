@@ -22,7 +22,7 @@ def en_tw(num_examples: int = None) -> tuple[LanguageIndex, LanguageIndex]:
     tw = [naive_words(line, punctuations="?.!,¿'", special_chars='ɛƐɔƆ').split(' ') for line in
           __read_lines(tw_path, num_examples)]
 
-    return LanguageIndex('en_tw - en', en), LanguageIndex('en_tw - tw', tw)
+    return LanguageIndex('en_tw-en', en), LanguageIndex('en_tw-tw', tw)
 
 
 def __read_lines(path_to_file: str, num_lines: int = None):

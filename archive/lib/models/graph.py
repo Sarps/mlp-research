@@ -42,7 +42,6 @@ class Graph(Model):
             connections (List[Tuple[str, str]]): A list of tuples specifying the connections between layers,
                                                  represented as (source_layer_name, destination_layer_name).
         """
-        print(inputs)
         if not isinstance(inputs, list):
             inputs = [inputs]
         used_input_names = {src for src, _ in connections}

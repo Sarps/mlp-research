@@ -69,7 +69,11 @@ jobs:
                     exports_location: "${{ env.PROJECT_DIR }}/${{ env.EXPORT_LOCATION }}"
 
             -   name: Execute Jupyter Notebook
-                run: papermill $project_dir/main.ipynb $project_dir/output.ipynb -p exports_dir "$export_dir" -p training_sample $training_sample -p num_attention_layers 4
+                run: |
+                    papermill $project_dir/main.ipynb $project_dir/output.ipynb --cwd . \
+                        -p exports_dir "$export_dir" \
+                        -p training_sample $training_sample \
+                        -p num_attention_layers 4
                 env:
                     training_sample: ${{ env.TRAIN_SAMPLE }}
                     export_dir: ${{ env.EXPORT_LOCATION }}

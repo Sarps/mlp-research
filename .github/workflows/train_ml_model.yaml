@@ -20,6 +20,7 @@ jobs:
             -   name: Set up Python
                 uses: actions/setup-python@v2
                 with:
+                    cache: 'pip'
                     python-version: '3.11.7'
 
             -   name: Install dependencies
@@ -70,7 +71,7 @@ jobs:
 
             -   name: Execute Jupyter Notebook
                 run: |
-                    ./run_notebook.py
+                    python run_notebook.py
                 #                    papermill $project_dir/main.ipynb $project_dir/output.ipynb --cwd . \
                 #                        -p exports_dir "$export_dir" \
                 #                        -p training_sample $training_sample \

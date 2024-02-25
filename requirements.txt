@@ -7,3 +7,4 @@ numpy==1.26.4
 tensorflow==2.15.0
 tensorflow_macos==2.15.0; sys_platform == 'darwin'
 pydot== 2.0.0
+papermill==2.5.0

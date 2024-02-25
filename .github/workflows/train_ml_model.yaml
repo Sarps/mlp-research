@@ -6,7 +6,7 @@ on:
 
 env:
     EXPORT_NAME: 'training-exports.zip'
-    EXPORT_LOCATION: '../exports/en-tw-transformer-nmt/'
+    EXPORT_LOCATION: 'exports/en-tw-transformer-nmt'
     PROJECT_DIR: 'projects/en-tw-transformer-nmt'
     TRAIN_SAMPLE: 100
 
@@ -67,7 +67,7 @@ jobs:
                 run: unzip $export_name -d $exports_location
                 env:
                     export_name: ${{ env.EXPORT_NAME }}
-                    exports_location: "${{ env.PROJECT_DIR }}/${{ env.EXPORT_LOCATION }}"
+                    exports_location: ${{ env.EXPORT_LOCATION }}
 
             -   name: Execute Jupyter Notebook
                 run: |
@@ -83,10 +83,12 @@ jobs:
                     project_dir: ${{ env.PROJECT_DIR }}
 
             -   name: Zip model checkpoints
-                run: zip -r $export_name $exports_location/*
+                run: |
+                    ls $exports_location
+                    zip -r $export_name $exports_location/*
                 env:
                     export_name: ${{ env.EXPORT_NAME }}
-                    exports_location: "${{ env.PROJECT_DIR }}/${{ env.EXPORT_LOCATION }}"
+                    exports_location: ${{ env.EXPORT_LOCATION }}
 
             -   name: Create Release
                 id: create_release

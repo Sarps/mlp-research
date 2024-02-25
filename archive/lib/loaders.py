@@ -11,7 +11,7 @@ def en_sp(num_examples: int) -> tuple[LanguageIndex, LanguageIndex]:
     word_pairs = [[naive_words(sentence, punctuations="?.!,¿'").split(' ') for sentence in l.split('\t')] for l in
                   __read_lines(path_to_file, num_examples)]
 
-    return LanguageIndex([inp for inp, targ in word_pairs]), LanguageIndex([targ for inp, targ in word_pairs])
+    return LanguageIndex('en_sp - en', [inp for inp, targ in word_pairs]), LanguageIndex('en_sp - sp', [targ for inp, targ in word_pairs])
 
 
 def en_tw(num_examples: int = None) -> tuple[LanguageIndex, LanguageIndex]:
@@ -22,7 +22,7 @@ def en_tw(num_examples: int = None) -> tuple[LanguageIndex, LanguageIndex]:
     tw = [naive_words(line, punctuations="?.!,¿'", special_chars='ɛƐɔƆ').split(' ') for line in
           __read_lines(tw_path, num_examples)]
 
-    return LanguageIndex(en), LanguageIndex(tw)
+    return LanguageIndex('en_tw - en', en), LanguageIndex('en_tw - tw', tw)
 
 
 def __read_lines(path_to_file: str, num_lines: int = None):

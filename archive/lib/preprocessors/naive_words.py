@@ -18,4 +18,4 @@ def naive_words(w: str, punctuations: str = "", special_chars: str = "") -> str:
     for regex, replacement in replacements:
         w = re.sub(regex, replacement, w)
 
-    return ' ' + w.rstrip().strip() + ' '
+    return w.rstrip().strip()

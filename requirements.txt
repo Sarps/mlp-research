@@ -1,0 +1,9 @@
+Flask==2.2.5
+jsonpath_ng==1.6.1
+archive==0.3
+keras==2.15.0
+matplotlib==3.8.0
+numpy==1.26.4
+tensorflow==2.15.0
+tensorflow_macos==2.15.0
+pydot== 2.0.0

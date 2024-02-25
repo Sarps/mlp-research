@@ -1,14 +1,16 @@
+import pickle
 from typing import Union, Dict, overload, Optional
 from keras.preprocessing import sequence
 
 
 class LanguageIndex():
-    def __init__(self, vocab: list[list[str]]) -> None:
+    def __init__(self, name: str, vocab: list[list[str]]) -> None:
+        self.name = name
         self.phrases = vocab
         self.word2idx: Dict[str, int] = {}
         self.idx2word: Dict[int, str] = {}
         self.vocab = self.__phrases_to_vocab()
-        self.max_length = self.__max_length()
+        self.max_timesteps = self.__max_timesteps()
 
         self.__create_index()
 
@@ -38,33 +40,64 @@ class LanguageIndex():
         else:
             raise ValueError("value must be 'int' or 'str'")
 
-    def tensor(self, pad: Optional[bool] = True) -> list[list[int]]:
+    def tensor(self, pad: Optional[bool] = True, shift: str = None) -> list[list[int]]:
         tensors = [self[s] for s in self.phrases]
+        if shift:
+            tensors = self.__shift(tensors, direction=shift)
         if pad:
-            return sequence.pad_sequences(tensors, maxlen=self.max_length, padding='post', value=self.zero_idx)
+            return sequence.pad_sequences(
+                tensors,
+                maxlen=self.max_timesteps,
+                padding='post',
+                value=self.eos_token,
+                truncating='post'
+            )
         return tensors
 
-    def to_padded_tensor(self, phrases: list[list[str]]) -> list[int]:
+    def save(self, path: str) -> None:
+        with open(f"{path}/{self.name}.lang.idx", "wb") as f:
+            pickle.dump(self, f)
+
+    def __shift(self, sequences, direction='start') -> list[list[int]]:
+        """
+        Shift sequences left or right, adding start or end tokens as necessary.
+
+        Args:
+        - sequences: List of sequences to be shifted.
+        - direction: 'start' to add a start token at the beginning (for decoder inputs),
+                     'end' to remove the start token (for targets).
+        """
+        if direction == 'start':
+            return [[self.eos_token] + seq for seq in sequences]
+        if direction == 'end':
+            return [seq[1:] for seq in sequences]
+        raise ValueError("Invalid direction specified. Use 'start' or 'end'.")
+
+    def to_padded_tensor(self, phrases: list[list[str]]) -> list[list[int]]:
         return sequence.pad_sequences(
             [self[s] for s in phrases],
-            maxlen=self.max_length,
+            maxlen=self.max_timesteps,
             padding='post',
-            value=self.zero_idx
+            value=self.eos_token
         )
 
     @property
-    def zero_idx(self) -> int:
+    def eos_token(self) -> int:
         return 0
 
     @property
     def zero_word(self) -> str:
         return ''
 
+    @property
+    def vocab_size(self) -> int:
+        return len(self.vocab) + 1
+
     def __create_index(self) -> None:
-        self.idx2word = {self.zero_idx: self.zero_word, **dict((idx + 1, word) for idx, word in enumerate(self.vocab))}
+        self.idx2word = {self.eos_token: self.zero_word, **dict((idx + 1, word) for idx, word in enumerate(self.vocab))}
         self.word2idx = dict((word, idx) for idx, word in self.idx2word.items())
 
-    def __max_length(self) -> int:
+    def __max_timesteps(self) -> int:
         return max(len(t) for t in self.phrases)
 
     def __phrases_to_vocab(self) -> list[str]:
@@ -75,7 +108,7 @@ class LanguageIndex():
         return (
             f"LanguageIndex {{ "
             f"sequences: {len(self.phrases)}, "
-            f"vocab_size: {len(self.vocab)}, "
-            f"max_sequence_timestep: {self.max_length}, "
+            f"vocab_size: {self.vocab_size}, "
+            f"max_sequence_timestep: {self.max_timesteps}, "
             f"vocab: ({vocab_sample}) }}"
         )

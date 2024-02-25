@@ -1,27 +1,39 @@
 from dataclasses import dataclass
-from typing import Any, Union, List, Tuple, NamedTuple
+from typing import Any, Union, List, Tuple
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Layer
+from jsonpath_ng import jsonpath, parse
 
 
 @dataclass
 class Connection:
-    src: Union[Tuple[str, int], str]
-    dest: Union[Tuple[str, str], str]
+    layer: str
+    local_key: jsonpath.JSONPath
+    foreign_key: jsonpath.JSONPath
 
 
 @dataclass
 class ConnectionGroup:
     name: str
-    connections: List[Connection]
+    connections: list[Connection]
     index: int
 
     def __lt__(self, other):
         return self.index < other.index
 
+    def append(self, src_layer: str, src_port: jsonpath.JSONPath, dest_port: jsonpath.JSONPath, idx: int):
+        self.connections.append(Connection(src_layer, src_port, dest_port))
+        self.index = idx
+
 
 class Graph(Model):
-    def __init__(self, inputs: Union[Input, List[Input]], layers: List[Layer], connections: List[Connection], **kwargs):
+    def __init__(
+            self,
+            inputs: Union[Input, list[Input]],
+            layers: list[Layer],
+            connections: list[tuple[str, str]],
+            **kwargs
+    ):
         """Initializes the GraphModel with separate inputs, layers, and direct connections.
 
         Args:
@@ -31,48 +43,84 @@ class Graph(Model):
                                                  represented as (source_layer_name, destination_layer_name).
         """
         if not isinstance(inputs, list):
-            inputs = [inputs]  # Ensure inputs is a list
+            inputs = [inputs]
 
         # Determine which inputs are used based on connections
-        used_input_names = {conn.src for conn in connections}
+        used_input_names = {src for src, _ in connections}
         used_inputs = [inp for inp in inputs if inp.name in used_input_names]
 
-        outputs = self.__build_model(used_inputs, layers, connections)
-        super(Graph, self).__init__(inputs=used_inputs, outputs=outputs, **kwargs)
+        super(Graph, self).__init__(
+            inputs=used_inputs,
+            outputs=self.__build_model(used_inputs, layers, connections),
+            **kwargs
+        )
 
-    def __build_model(self, inputs: List[Input], layers: List[Layer], connections: List[Connection]) -> Any:
-        """Builds the model based on the specified inputs, layers, and connections."""
+    def __build_model(
+            self,
+            inputs: List[Input],
+            layers: List[Layer],
+            connections: list[tuple[str, str]]
+    ) -> Any:
         layer_maps: dict[str, Layer] = {layer.name: layer for layer in layers}
         tensor_maps: dict[str, Any] = {inp.name: inp for inp in inputs}
-
         connection_groups = self.__get_connection_groups(connections)
 
         for group in connection_groups:
             dest_layer = layer_maps[group.name]
-            src_outputs: List[tuple[str, Any]] = []
+            dest_inputs: dict[str, str] = {}
             for conn in group.connections:
-                arg_name = conn.dest[1] if isinstance(conn.dest, (tuple, list)) else 0
-                if isinstance(conn.src, str):
-                    src_outputs.append((arg_name, tensor_maps[conn.src]))
-                elif isinstance(conn.src, tuple):
-                    src_name, src_index = conn.src
-                    src_outputs.append((arg_name, tensor_maps[src_name][src_index]))
+                input_val = ConnectionManager.find_or_fail(tensor_maps[conn.layer], conn.local_key)
+                dest_inputs = ConnectionManager.add(dest_inputs, conn.foreign_key, input_val)
 
-            if len(src_outputs) > 1:
-                tensor_maps[group.name] = dest_layer(**dict(src_outputs))
-            else:
-                tensor_maps[group.name] = dest_layer(src_outputs[0][1])
-
+            tensor_maps[group.name] = dest_layer(**dest_inputs) if isinstance(dest_inputs, dict) \
+                else dest_layer(dest_inputs)
         # Assuming the last group's destination is the model output
         return tensor_maps[connection_groups[-1].name]
 
-    def __get_connection_groups(self, connections: List[Connection]) -> list[ConnectionGroup]:
+    def __get_connection_groups(self, connections: list[tuple[str, str]]) -> list[ConnectionGroup]:
         # Group connections by destination while maintaining the order based on the last appearance
         grouped: dict[str, ConnectionGroup] = {}
-        for idx, connection in enumerate(connections):
-            dest_name = connection.dest[0] if isinstance(connection.dest, (tuple, list)) else connection.dest
+        for idx, (src, dest) in enumerate(connections):
+            dest_name, dest_port = ConnectionManager.parse_port(dest)
+            src_layer, src_port = ConnectionManager.parse_port(src)
             if dest_name not in grouped:
                 grouped[dest_name] = ConnectionGroup(dest_name, [], idx)
-            grouped[dest_name].connections.append(connection)
-            grouped[dest_name].index = idx
+            grouped[dest_name].append(src_layer, src_port, dest_port, idx)
         return sorted(grouped.values())
+
+
+class ConnectionManager:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def parse_port(output: str) -> tuple[str, jsonpath.JSONPath]:
+        layer_name, index = ConnectionManager.__parse_connection_string(parse(output))
+        return layer_name, jsonpath.Root() if index is None else index
+
+    @staticmethod
+    def find_or_fail(data: Any, path: jsonpath.JSONPath) -> Any:
+        results = path.find(data)
+        if len(results) != 1:
+            raise Exception(f"Expected exactly one match for {path}, got {len(results)}")
+        return results[0].value
+
+    @staticmethod
+    def add(data: Any, path: jsonpath.JSONPath, value: Any) -> Any:
+        return path.update_or_create(data, value)
+
+    @staticmethod
+    def __parse_connection_string(child: jsonpath.JSONPath) -> tuple[str, Union[jsonpath.JSONPath, None]]:
+        if isinstance(child, jsonpath.Fields):
+            return ConnectionManager.__get_field_name(child), None
+        if isinstance(child, jsonpath.Child):
+            layer_name, right = ConnectionManager.__parse_connection_string(child.left)
+            return layer_name, child.right if right is None else jsonpath.Child(right, child.right)
+        else:
+            raise Exception(f"Expected index or key, got ${child}")
+
+    @staticmethod
+    def __get_field_name(fields: jsonpath.Fields) -> str:
+        if len(fields.fields) != 1:
+            raise Exception(f"Expected exactly one field name, got {fields.fields}")
+        return str(fields.fields[0])

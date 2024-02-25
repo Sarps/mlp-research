@@ -1,79 +1,102 @@
 name: Train ML Model
 
 on:
-  workflow_dispatch:
-  push:
+    workflow_dispatch:
+    push:
 
 env:
-  EXPORT_NAME: 'training-exports.zip'
-  EXPORT_LOCATION: '../exports/en-tw-transformer-nmt/'
-  PROJECT_DIR: 'projects/en-tw-transformer-nmt'
-  TRAIN_SAMPLE: 1000
+    EXPORT_NAME: 'training-exports.zip'
+    EXPORT_LOCATION: '../exports/en-tw-transformer-nmt/'
+    PROJECT_DIR: 'projects/en-tw-transformer-nmt'
+    TRAIN_SAMPLE: 1000
 
 jobs:
-  train:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    train:
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout repository
+                uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.11.7'
+            -   name: Set up Python
+                uses: actions/setup-python@v2
+                with:
+                    python-version: '3.11.7'
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install jupyter keras papermill
-          pip install -r requirements.txt
+            -   name: Install dependencies
+                run: |
+                    python -m pip install --upgrade pip
+                    pip install jupyter keras papermill
+                    pip install -r requirements.txt
 
-      - name: Download latest release checkpoints
-        id: download-release
-        uses: dsaltares/fetch-gh-release-asset@master
-        with:
-          repo: "${{ github.repository }}"
-          version: "latest"
-          file: ${{ env.EXPORT_NAME }}
-          target: "./${{ env.EXPORT_NAME }}.zip"
-          token: ${{ secrets.GITHUB_TOKEN }}
+            -   name: Check for latest release
+                id: check_release
+                run: |
+                    echo "Checking for the latest release..."
+                    latest_release=$(gh api repos/${{ github.repository }}/releases/latest --silent || echo "no_release")
+                    if [[ "$latest_release" == "no_release" ]]; then
+                      echo "No release found. Proceeding without downloading."
+                      echo "::set-output name=release_exists::false"
+                    else
+                      echo "Release found. Preparing to download assets."
+                      echo "::set-output name=release_exists::true"
+                    fi
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Unzip model checkpoints
-        run: unzip $export_name -d $exports_location
-        env:
-          export_name: ${{ env.EXPORT_NAME }}
-          exports_location: "${{ env.PROJECT_DIR }}/${{ env.EXPORT_LOCATION }}"
+            -   name: Download latest release assets
+                if: steps.check_release.outputs.release_exists == 'true'
+                run: |
+                    gh release download --repo ${{ github.repository }} --pattern '*'
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Execute Jupyter Notebook
-        run: papermill $project_dir/main.ipynb -p exports_dir "$export_dir" -p training_sample $training_sample -p num_attention_layers 4
-        env:
-          training_sample: ${{ env.TRAIN_SAMPLE }}
-          export_dir: ${{ env.EXPORT_LOCATION }}
-          project_dir: ${{ env.PROJECT_DIR }}
+#            -   name: Download latest release checkpoints
+#                if: steps.check_release.outputs.release_exists == 'true'
+#                id: download-release
+#                uses: dsaltares/fetch-gh-release-asset@master
+#                with:
+#                    repo: "${{ github.repository }}"
+#                    version: "latest"
+#                    file: ${{ env.EXPORT_NAME }}
+#                    target: "./${{ env.EXPORT_NAME }}.zip"
+#                    token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Zip model checkpoints
-        run: zip -r $export_name $exports_location/*
-        env:
-          export_name: ${{ env.EXPORT_NAME }}
-          exports_location: "${{ env.PROJECT_DIR }}/${{ env.EXPORT_LOCATION }}"
+            -   name: Unzip model checkpoints
+                run: unzip $export_name -d $exports_location
+                env:
+                    export_name: ${{ env.EXPORT_NAME }}
+                    exports_location: "${{ env.PROJECT_DIR }}/${{ env.EXPORT_LOCATION }}"
 
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.run_id }}
-          release_name: Release for run ${{ github.run_id }}
-          draft: false
-          prerelease: false
+            -   name: Execute Jupyter Notebook
+                run: papermill $project_dir/main.ipynb -p exports_dir "$export_dir" -p training_sample $training_sample -p num_attention_layers 4
+                env:
+                    training_sample: ${{ env.TRAIN_SAMPLE }}
+                    export_dir: ${{ env.EXPORT_LOCATION }}
+                    project_dir: ${{ env.PROJECT_DIR }}
 
-      - name: Upload model checkpoint to Release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: "./${{ env.EXPORT_NAME }}"
-          asset_name: ${{ env.EXPORT_NAME }}
-          asset_content_type: application/zip
+            -   name: Zip model checkpoints
+                run: zip -r $export_name $exports_location/*
+                env:
+                    export_name: ${{ env.EXPORT_NAME }}
+                    exports_location: "${{ env.PROJECT_DIR }}/${{ env.EXPORT_LOCATION }}"
+
+            -   name: Create Release
+                id: create_release
+                uses: actions/create-release@v1
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                with:
+                    tag_name: ${{ github.run_id }}
+                    release_name: Release for run ${{ github.run_id }}
+                    draft: false
+                    prerelease: false
+
+            -   name: Upload model checkpoint to Release
+                uses: actions/upload-release-asset@v1
+                env:
+                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                with:
+                    upload_url: ${{ steps.create_release.outputs.upload_url }}
+                    asset_path: "./${{ env.EXPORT_NAME }}"
+                    asset_name: ${{ env.EXPORT_NAME }}
+                    asset_content_type: application/zip

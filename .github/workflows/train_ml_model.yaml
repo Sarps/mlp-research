@@ -10,6 +10,10 @@ env:
     PROJECT_DIR: 'projects/en-tw-transformer-nmt'
     TRAIN_SAMPLE: 100
 
+permissions:
+    contents: write
+    packages: write
+
 jobs:
     train:
         runs-on: ubuntu-latest
@@ -51,17 +55,6 @@ jobs:
                 env:
                     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            #            -   name: Download latest release checkpoints
-            #                if: steps.check_release.outputs.release_exists == 'true'
-            #                id: download-release
-            #                uses: dsaltares/fetch-gh-release-asset@master
-            #                with:
-            #                    repo: "${{ github.repository }}"
-            #                    version: "latest"
-            #                    file: ${{ env.EXPORT_NAME }}
-            #                    target: "./${{ env.EXPORT_NAME }}.zip"
-            #                    token: ${{ secrets.GITHUB_TOKEN }}
-
             -   name: Unzip model checkpoints
                 if: steps.check_release.outputs.release_exists == 'true'
                 run: unzip $export_name -d $exports_location
@@ -88,3 +81,5 @@ jobs:
                     GITHUB_TOKEN: ${{ github.token }}
                 with:
                     asset_paths: '["${{ env.EXPORT_LOCATION }}/*"]'
+                
+

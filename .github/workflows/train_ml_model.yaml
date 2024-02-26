@@ -82,31 +82,9 @@ jobs:
                     export_dir: ${{ env.EXPORT_LOCATION }}
                     project_dir: ${{ env.PROJECT_DIR }}
 
-            -   name: Zip model checkpoints
-                run: |
-                    ls $exports_location
-                    zip -r $export_name $exports_location/*
+            -   name: Upload release binaries
+                uses: alexellis/upload-assets@0.4.0
                 env:
-                    export_name: ${{ env.EXPORT_NAME }}
-                    exports_location: ${{ env.EXPORT_LOCATION }}
-
-            -   name: Create Release
-                id: create_release
-                uses: actions/create-release@v1
-                env:
-                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                    GITHUB_TOKEN: ${{ github.token }}
                 with:
-                    tag_name: ${{ github.run_id }}
-                    release_name: Release for run ${{ github.run_id }}
-                    draft: false
-                    prerelease: false
-
-            -   name: Upload model checkpoint to Release
-                uses: actions/upload-release-asset@v1
-                env:
-                    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                with:
-                    upload_url: ${{ steps.create_release.outputs.upload_url }}
-                    asset_path: "./${{ env.EXPORT_NAME }}"
-                    asset_name: ${{ env.EXPORT_NAME }}
-                    asset_content_type: application/zip
+                    asset_paths: '["${{ env.EXPORT_LOCATION }}/*"]'

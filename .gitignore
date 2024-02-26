@@ -174,3 +174,5 @@ cython_debug/
 
 training_checkpoints
 exports
+
+.DS_Store

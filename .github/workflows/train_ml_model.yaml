@@ -50,10 +50,11 @@ jobs:
             -   name: Download latest release assets
                 if: steps.check_release.outputs.release_exists == 'true'
                 run: |
-                    gh release download --repo ${{ github.repository }} --pattern '*.{best.keras,lang.idx}'
+                    gh release download --repo ${{ github.repository }} \
+                        --dir ${{ env.EXPORT_LOCATION }} \
+                        -p '*.best.keras' -p '*.lang.idx'
                 env:
                     GITHUB_TOKEN: ${{ github.token }}
-                working-directory: ${{ env.EXPORT_LOCATION }}
 
             -   name: Execute Jupyter Notebook
                 run: |

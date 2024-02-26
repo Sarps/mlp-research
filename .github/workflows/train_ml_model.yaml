@@ -25,9 +25,12 @@ jobs:
 
             -   name: Install dependencies
                 run: |
+                    mkdir -p $export_dir
                     python -m pip install --upgrade pip
                     pip install jupyter keras papermill
                     pip install -r requirements.txt
+                env:
+                    export_dir: ${{ env.EXPORT_LOCATION }}
 
             -   name: Check for latest release
                 id: check_release

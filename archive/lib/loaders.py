@@ -27,10 +27,8 @@ def en_tw(num_examples: int = None) -> tuple[LanguageIndex, LanguageIndex]:
 
 def __read_lines(path_to_file: str, num_lines: int = None):
     with open(path_to_file, 'r', encoding='UTF-8') as file:
-        if num_lines is None:
-            return file.readlines()
         for i, line in enumerate(file):
-            if i >= num_lines:
+            if num_lines is not None and i >= num_lines:
                 break
             yield line.strip()
 

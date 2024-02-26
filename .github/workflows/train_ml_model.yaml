@@ -10,10 +10,6 @@ env:
     PROJECT_DIR: 'projects/en-tw-transformer-nmt'
     TRAIN_SAMPLE: 100
 
-permissions:
-    contents: write
-    packages: write
-
 jobs:
     train:
         runs-on: ubuntu-latest
@@ -75,11 +71,22 @@ jobs:
                     export_dir: ${{ env.EXPORT_LOCATION }}
                     project_dir: ${{ env.PROJECT_DIR }}
 
-            -   name: Upload release binaries
-                uses: alexellis/upload-assets@0.4.0
+            -   name: Create Release
+                id: create_release
+                uses: actions/create-release@v1
+                with:
+                    tag_name: ${{ github.run_id }}
+                    release_name: Release for run ${{ github.run_id }}
+                    draft: false
+                    prerelease: false
+
+            -   name: Upload Release Assets
+                id: upload-release-assets
+                uses: dwenegar/upload-release-assets@v1
                 env:
                     GITHUB_TOKEN: ${{ github.token }}
                 with:
-                    asset_paths: '["${{ env.EXPORT_LOCATION }}/*"]'
+                    release_id: ${{ steps.create_release.outputs.id }}
+                    assets_path: ${{ env.EXPORT_LOCATION }}
                 
 

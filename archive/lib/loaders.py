@@ -19,7 +19,7 @@ def en_tw(num_examples: int = None) -> tuple[LanguageIndex, LanguageIndex]:
                                               'NLLB.en-tw.en', 'NLLB.en-tw.tw')
 
     en = [naive_words(line, punctuations="?.!,'").split(' ') for line in __read_lines(en_path, num_examples)]
-    tw = [naive_words(line, punctuations="?.!,¿'", special_chars='ɛƐɔƆ').split(' ') for line in
+    tw = [naive_words(line, punctuations="?.!,'", special_chars='ɛƐɔƆ').split(' ') for line in
           __read_lines(tw_path, num_examples)]
 
     return LanguageIndex('en_tw-en', en), LanguageIndex('en_tw-tw', tw)

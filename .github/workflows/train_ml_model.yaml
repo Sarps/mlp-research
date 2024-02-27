@@ -68,7 +68,7 @@ jobs:
                 run: |
                     papermill ${{ env.PROJECT_DIR }}/main.ipynb out.ipynb --prepare-only \
                         -p exports_dir "${{ env.EXPORT_LOCATION }}" \
-                        -p asset_dir "${{ env.ASSET_DIR }}"
+                        -p asset_dir "${{ env.ASSET_DIR }}" \
                         -p training_sample ${{ env.TRAIN_SAMPLE }} \
                         -p num_attention_layers 4
                     jupyter nbconvert out.ipynb --to script

@@ -63,6 +63,7 @@ jobs:
                         -p asset_dir "${{ env.ASSET_DIR }}"
                     jupyter nbconvert tokenizer.ipynb --to script
                     python tokenizer.py
+                    ls -alF "${{ env.ASSET_DIR }}"
 
             -   name: Execute Training Notebook
                 run: |

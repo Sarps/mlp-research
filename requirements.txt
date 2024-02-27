@@ -9,4 +9,3 @@ tensorflow_macos==2.15.0; sys_platform == 'darwin'
 pydot== 2.0.0
 papermill==2.5.0
 tokenizers==0.13.2
-memory_profiler==5.9.0

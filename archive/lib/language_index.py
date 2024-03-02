@@ -1,13 +1,13 @@
-from typing import Union, Dict, overload, Optional
+from typing import Union, overload
 
-import numpy as np
-from keras.preprocessing import sequence
 from tokenizers import Tokenizer
 from tokenizers.processors import TemplateProcessing
 
+from .loaders import read_lines
+
 
 class LanguageIndex():
-    def __init__(self, name: str, vocab_path: str, data_path: str, max_timesteps: int) -> None:
+    def __init__(self, name: str, vocab_path: str, max_timesteps: int, data_path: str = None) -> None:
         self.name = name
         self.data_path = data_path
         self.tokenizer = self.__setup_tokenizers(vocab_path, max_timesteps)
@@ -28,19 +28,22 @@ class LanguageIndex():
         else:
             raise ValueError("value must be 'list' or 'str'")
 
-    def data(self, batch_size=32):
-        batch_inputs = []
-        while True:
-            with open(self.data_path, 'r', encoding='utf-8') as f:
-                for line in f:
-                    batch_inputs.append(self[line.strip()])
-                    if len(batch_inputs) == batch_size:
-                        yield np.array(batch_inputs, ndmin=2)
-                        batch_inputs = []
+    def data(self, training_sample: int = None):
+        if self.data_path is None:
+            raise AttributeError("No data path specified")
+        return [self[line] for line in read_lines(self.data_path, training_sample)]
 
     @property
     def vocab_size(self) -> int:
         return self.tokenizer.get_vocab_size(with_added_tokens=True)
+
+    @property
+    def sos_token_id(self) -> int:
+        return 0
+
+    @property
+    def eos_token_id(self) -> int:
+        return 1
 
     def __setup_tokenizers(self, vocab_path: str, max_timesteps: int):
         tokenizer = Tokenizer.from_file(vocab_path)
